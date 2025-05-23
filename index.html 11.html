@@ -1,0 +1,442 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Flip Card Game</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background: linear-gradient(135deg, #f9f7f6, #f0f0f0);
+      margin: 0;
+      padding: 20px;
+      text-align: center;
+    }
+
+    h1 {
+      color: #333;
+    }
+
+    #controls {
+      margin-bottom: 20px;
+    }
+
+    button {
+      padding: 10px 15px;
+      margin: 5px;
+      font-size: 16px;
+      cursor: pointer;
+      border: none;
+      border-radius: 8px;
+      background-color: #4c8bf5;
+      color: white;
+      transition: background-color 0.3s;
+    }
+
+    button:hover {
+      background-color: #3a6fdc;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 15px;
+      margin-top: 20px;
+    }
+
+    .card {
+      perspective: 1000px;
+      position: relative;
+      cursor: pointer;
+      z-index: 1;
+      transition: transform 0.2s ease;
+    }
+
+    /* Hover glow effect */
+    .card:hover {
+      transform: translateY(-5px);
+    }
+
+    .card:hover::before {
+      content: '';
+      position: absolute;
+      top: -5px;
+      left: -5px;
+      right: -5px;
+      bottom: -5px;
+      border-radius: 16px;
+      background: linear-gradient(45deg, #ff9a9e, #fad0c4, #a18cd1, #fbc2eb);
+      background-size: 400% 400%;
+      z-index: -1;
+      opacity: 0.5;
+      animation: glowPulse 3s linear infinite;
+    }
+
+    @keyframes glowPulse {
+      0%, 100% {
+        background-position: 0% 50%;
+      }
+      50% {
+        background-position: 100% 50%;
+      }
+    }
+
+    /* Active card glow effect */
+    .card.active::after {
+      content: '';
+      position: absolute;
+      top: -15px;
+      left: -15px;
+      right: -15px;
+      bottom: -15px;
+      border-radius: 25px;
+      background: linear-gradient(45deg, #ff9a9e, #fad0c4, #a18cd1, #fbc2eb);
+      background-size: 400% 400%;
+      z-index: -1;
+      opacity: 0.6;
+      animation: activeGlow 4s linear infinite;
+      filter: blur(15px);
+      pointer-events: none;
+    }
+
+    @keyframes activeGlow {
+      0%, 100% {
+        background-position: 0% 50%;
+      }
+      50% {
+        background-position: 100% 50%;
+      }
+    }
+
+    .inner-card {
+      position: relative;
+      width: 100%;
+      padding-top: 100%; 
+      transform-style: preserve-3d;
+      transition: transform 0.7s cubic-bezier(0.4, 0.2, 0.2, 1);
+    }
+
+    /* Continuous flip animation for active card */
+    .card.active .inner-card {
+      animation: continuousFlip 6s ease-in-out infinite;
+    }
+
+    @keyframes continuousFlip {
+      0%, 60%, 100% {
+        transform: rotateY(0deg);
+      }
+      15%, 45% {
+        transform: rotateY(180deg);
+      }
+    }
+
+    .front, .back {
+      position: absolute;
+      top: 0; left: 0;
+      width: 100%;
+      height: 100%;
+      border-radius: 12px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 10px;
+      color: white;
+      font-weight: bold;
+      font-size: 16px;
+      backface-visibility: hidden;
+      box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+    }
+
+    .front {
+      background: linear-gradient(135deg, #ff9a9e, #fad0c4);
+    }
+
+    .back {
+      background: linear-gradient(135deg, #a18cd1, #fbc2eb);
+      transform: rotateY(180deg);
+    }
+
+    /* Floating name label */
+    .name-label {
+      position: fixed;
+      top: 20%;
+      left: 50%;
+      transform: translateX(-50%) scale(0.8);
+      background: rgba(255, 255, 255, 0.95);
+      padding: 12px 24px;
+      border-radius: 30px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+      z-index: 30;
+      opacity: 0;
+      transition: all 0.4s cubic-bezier(0.2, 0.8, 0.4, 1);
+      font-weight: bold;
+      color: #333;
+      font-size: 18px;
+      white-space: nowrap;
+      max-width: 80%;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .name-label.visible {
+      opacity: 1;
+      transform: translateX(-50%) scale(1);
+    }
+
+    /* Overlay */
+    .overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0,0,0,0.5);
+      z-index: 10;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.3s ease;
+      backdrop-filter: blur(3px);
+    }
+
+    .overlay.active {
+      opacity: 1;
+      pointer-events: all;
+    }
+
+    .card.active {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%) scale(1.5);
+      z-index: 20;
+      width: 180px;
+      height: 180px;
+      transition: all 0.5s cubic-bezier(0.4, 0.2, 0.2, 1);
+    }
+
+    /* Responsive adjustments */
+    @media (max-width: 768px) {
+      .card.active {
+        transform: translate(-50%, -50%) scale(1.3);
+      }
+      .name-label {
+        top: 15%;
+        font-size: 16px;
+        padding: 10px 20px;
+      }
+    }
+
+    @media (max-width: 480px) {
+      .card.active {
+        transform: translate(-50%, -50%) scale(1.1);
+      }
+      .name-label {
+        top: 10%;
+        font-size: 14px;
+        padding: 8px 16px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <h1>Critical Thinking Flip Card Game</h1>
+  <div id="controls">
+    <button onclick="switchGroup('7-8')">7–8 PM Group</button>
+    <button onclick="switchGroup('9-10')">9–10 PM Group</button>
+    <button onclick="resetGame()">Reset</button>
+  </div>
+  <div class="overlay" id="overlay"></div>
+  <div id="nameLabel" class="name-label"></div>
+  <div class="grid" id="cardGrid"></div>
+
+  <script>
+    const questions = [
+      "What makes you feel confident?",
+      "If you could travel anywhere, where would you go?",
+      "What do you enjoy doing alone?",
+      "What do you think your future job will be?",
+      "What is something you always forget?",
+      "What is the hardest thing about learning English?",
+      "What do you do when you feel nervous?",
+      "What would you do if you won a plane ticket?",
+      "Who do you admire and why?",
+      "What does success mean to you?",
+      "Describe your dream home.",
+      "If you could change your name, what would it be?",
+      "What do you usually do on weekends?",
+      "What kind of movies do you like most?",
+      "If you had a superpower, what would it be?",
+      "What is one habit you want to change?",
+      "What's something simple that makes you happy?",
+      "If you could meet one famous person, who would it be?",
+      "What's the best way to stay motivated?",
+      "How do you usually prepare for a presentation?",
+      "Where do you see yourself in 5 years?",
+      "What is your biggest dream?",
+      "What is more important: hard work or talent?",
+      "What do you do when you feel stressed?",
+      "If you had one free day, what would you do?"
+    ];
+
+    const group78 = [
+      "Kean Kimhour", "Keng Bora", "Daly", "Rom Pheaktra", "Sreng Kimheang",
+      "Venerable Oudom", "Biya", "Vannak Sophary", "Sroeun Sophea", "Kompheak"
+    ];
+
+    const group910 = [
+      "Yin Vouchngin", "Vatana", "Channy", "Wat Domboukkpous", "Vouch Neang",
+      "Sorm Seyha", "Sarita Yin", "Thy Vibol", "Vanna", "Ran Piseth",
+      "Chanrachna Oum", "Sean Lavy", "Ban Sophea", "Phat Khemcheat",
+      "Yon Thavika", "Chinyu Chea", "Hor Kimheang"
+    ];
+
+    let currentGroup = group78;
+    let activeCard = null;
+    let originalPosition = null;
+    let nameLabel = document.getElementById('nameLabel');
+
+    function shuffle(array) {
+      let newArray = [...array];
+      for (let i = newArray.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [newArray[i], newArray[j]] = [newArray[j], newArray[i]];
+      }
+      return newArray;
+    }
+
+    function switchGroup(group) {
+      currentGroup = group === '7-8' ? group78 : group910;
+      resetGame();
+    }
+
+    function resetGame() {
+      const shuffledQuestions = shuffle(questions).slice(0, 25);
+      const shuffledNames = shuffle(currentGroup);
+      const cardGrid = document.getElementById("cardGrid");
+      cardGrid.innerHTML = "";
+
+      for (let i = 0; i < 25; i++) {
+        const question = shuffledQuestions[i % shuffledQuestions.length];
+        const name = shuffledNames[i % shuffledNames.length];
+
+        const card = document.createElement("div");
+        card.className = "card";
+        card.dataset.index = i;
+        card.dataset.name = name;
+        card.onclick = (e) => handleCardClick(e, card);
+
+        const innerCard = document.createElement("div");
+        innerCard.className = "inner-card";
+
+        const front = document.createElement("div");
+        front.className = "front";
+        front.innerText = question;
+
+        const back = document.createElement("div");
+        back.className = "back";
+        back.innerText = name;
+
+        innerCard.appendChild(front);
+        innerCard.appendChild(back);
+        card.appendChild(innerCard);
+        cardGrid.appendChild(card);
+      }
+      
+      if (activeCard) {
+        closeActiveCard();
+      }
+    }
+
+    function handleCardClick(e, card) {
+      e.stopPropagation();
+      
+      // If clicking the already active card, close it
+      if (activeCard === card) {
+        closeActiveCard();
+        return;
+      }
+      
+      // If another card is active, close it first
+      if (activeCard) {
+        closeActiveCard();
+      }
+      
+      // Hide name label initially
+      nameLabel.classList.remove('visible');
+      
+      // Store original position
+      const rect = card.getBoundingClientRect();
+      originalPosition = {
+        top: rect.top + window.scrollY,
+        left: rect.left + window.scrollX,
+        width: rect.width,
+        height: rect.height
+      };
+      
+      // Set as active card
+      activeCard = card;
+      document.getElementById('overlay').classList.add('active');
+      
+      // Calculate center position
+      const centerX = window.innerWidth / 2 - rect.width / 2;
+      const centerY = window.innerHeight / 2 - rect.height / 2;
+      
+      // Apply active styles with animation
+      card.style.position = 'fixed';
+      card.style.top = `${rect.top}px`;
+      card.style.left = `${rect.left}px`;
+      card.style.width = `${rect.width}px`;
+      card.style.height = `${rect.height}px`;
+      card.style.transition = 'all 0.5s cubic-bezier(0.4, 0.2, 0.2, 1)';
+      
+      // Force reflow to ensure transition works
+      void card.offsetWidth;
+      
+      // Move to center and scale up
+      card.classList.add('active');
+      card.style.top = `${centerY}px`;
+      card.style.left = `${centerX}px`;
+      
+      // Show name label after a short delay (during first flip)
+      setTimeout(() => {
+        nameLabel.textContent = card.dataset.name;
+        nameLabel.classList.add('visible');
+      }, 1500);
+    }
+
+    function closeActiveCard() {
+      if (!activeCard) return;
+      
+      const card = activeCard;
+      
+      // Hide name label
+      nameLabel.classList.remove('visible');
+      
+      // Return to original position
+      card.style.top = `${originalPosition.top}px`;
+      card.style.left = `${originalPosition.left}px`;
+      card.style.width = `${originalPosition.width}px`;
+      card.style.height = `${originalPosition.height}px`;
+      
+      // Remove active state after animation completes
+      setTimeout(() => {
+        card.classList.remove('active');
+        card.removeAttribute('style');
+        document.getElementById('overlay').classList.remove('active');
+        activeCard = null;
+        originalPosition = null;
+      }, 500);
+    }
+
+    // Close card when clicking outside
+    document.addEventListener('click', (e) => {
+      if (activeCard && !activeCard.contains(e.target)) {
+        closeActiveCard();
+      }
+    });
+
+    // Initialize game
+    resetGame();
+  </script>
+</body>
+</html>
